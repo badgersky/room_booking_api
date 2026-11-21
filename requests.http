@@ -138,3 +138,39 @@ Authorization: Bearer {{annaToken}}
 ### cancel /4 - ADMIN cudzej (200)
 PATCH {{host}}/api/reservations/2/cancel
 Authorization: Bearer {{adminToken}}
+### ================= Zadanie 05 - scenariusz audit log =================
+
+### 1. Anna tworzy rezerwację (201)
+# @name annaCreate
+POST {{host}}/api/reservations
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{ "roomId": 2, "participants": 3, "startTime": "2027-05-10T10:00:00Z", "endTime": "2027-05-10T11:00:00Z" }
+
+### 2. Nieudana próba kolizji (409 ROOM_ALREADY_BOOKED) - nie trafia do audit_log
+POST {{host}}/api/reservations
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{ "roomId": 2, "participants": 3, "startTime": "2027-05-10T10:30:00Z", "endTime": "2027-05-10T11:30:00Z" }
+
+### 3. ADMIN anuluje rezerwację Anny (200) - w logach api: [notification]
+PATCH {{host}}/api/reservations/{{annaCreate.response.body.id}}/cancel
+Authorization: Bearer {{adminToken}}
+
+### 4. ADMIN anuluje ponownie (200, idempotentnie) - brak nowego wpisu w audit_log
+PATCH {{host}}/api/reservations/{{annaCreate.response.body.id}}/cancel
+Authorization: Bearer {{adminToken}}
+
+### 5. Audit log - ADMIN (200)
+GET {{host}}/api/admin/audit-log
+Authorization: Bearer {{adminToken}}
+
+### 6. Audit log z filtrem i pagination - ADMIN (200)
+GET {{host}}/api/admin/audit-log?eventType=reservation.cancelled&page=1&limit=1
+Authorization: Bearer {{adminToken}}
+
+### 7. Audit log - USER (403)
+GET {{host}}/api/admin/audit-log
+Authorization: Bearer {{annaToken}}
