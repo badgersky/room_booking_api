@@ -1,5 +1,7 @@
 # Room Booking API (PostgreSQL edition)
 
+![CI](https://github.com/badgersky/room_booking_api/actions/workflows/ci.yml/badge.svg)
+
 Node.js 22 · Express 5 · Zod · Knex · PostgreSQL 16 · Jest · Docker Compose.
 
 ## 1. Quick start - Docker Compose (one command)
@@ -7,8 +9,8 @@ Node.js 22 · Express 5 · Zod · Knex · PostgreSQL 16 · Jest · Docker Compos
 Requirements: Docker with Compose v2. Nothing else (no Node.js, no PostgreSQL) is needed on the machine.
 
 ```bash
-git clone <repository-url> room_reservation_3
-cd room_reservation_3
+git clone https://github.com/badgersky/room_booking_api.git
+cd room_booking_api
 cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 docker compose up --build
 ```
