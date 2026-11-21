@@ -7,7 +7,6 @@ function createBuildingsRouter(controller) {
   const router = Router();
 
   router.get("/", controller.list);
-  router.post("/", validate({ body: createBuildingBody }), controller.create);
   router.get("/:id", validate({ params: idParams }), controller.getById);
   router.get("/:id/rooms", validate({ params: idParams }), controller.listRooms);
   router.post("/", authorize("ADMIN"), validate({ body: createBuildingBody }), controller.create);

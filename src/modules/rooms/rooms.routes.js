@@ -7,7 +7,6 @@ function createRoomsRouter(controller) {
   const router = Router();
 
   router.get("/", controller.list);
-  router.post("/", validate({ body: createRoomBody }), controller.create);
   router.get("/:id", validate({ params: idParams }), controller.getById);
   router.post("/", authorize("ADMIN"), validate({ body: createRoomBody }), controller.create);
 

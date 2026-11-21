@@ -91,8 +91,6 @@ function createReservationsService({ runInTransaction, now = () => new Date() })
         throw new ConflictError("Room is already booked in this time range", "ROOM_ALREADY_BOOKED");
       }
 
-      await new Promise(resolve => setTimeout(resolve, 200)); 
-
       return reservations.create({
         roomId: room.id,
         userId: currentUser.id,
