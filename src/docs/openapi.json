@@ -16,6 +16,9 @@
     },
     {
       "name": "Reservations"
+    },
+    {
+      "name": "Admin"
     }
   ],
   "components": {
@@ -328,6 +331,60 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Reservation"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "AuditLogEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "eventType": {
+            "type": "string",
+            "example": "reservation.cancelled"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "reservationId": 6,
+              "roomId": 2,
+              "userId": 2,
+              "cancelledBy": 1
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AuditLogPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntry"
             }
           },
           "meta": {
@@ -1255,6 +1312,91 @@
           },
           "409": {
             "description": "RESERVATION_ALREADY_STARTED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/audit-log": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Audit log of reservation events, newest first (ADMIN only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eventType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "example": "reservation.created"
+            },
+            "description": "e.g. reservation.created, reservation.cancelled"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of audit log entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an ADMIN (FORBIDDEN)",
             "content": {
               "application/json": {
                 "schema": {

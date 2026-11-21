@@ -19,10 +19,20 @@ const { createReservationsService } = require("./modules/reservations/reservatio
 const { createReservationsController } = require("./modules/reservations/reservations.controller");
 const { createReservationsRouter } = require("./modules/reservations/reservations.routes");
 
+const { createAdminRouter } = require("./modules/admin/admin.routes");
+const { noopEventBus } = require("./events/eventBus");
+
 const swaggerUi = require("swagger-ui-express");
 const openapiDocument = require("./docs/openapi.json")
 
-function createApp({ config, runInTransaction, usersRepository, now = () => new Date() }) {
+function createApp({
+  config,
+  runInTransaction,
+  usersRepository,
+  auditLogRepository,
+  eventBus = noopEventBus,
+  now = () => new Date()
+}) {
   const app = express();
 
   app.use(requestLogger);
@@ -37,13 +47,15 @@ function createApp({ config, runInTransaction, usersRepository, now = () => new 
   });
   const buildingsService = createBuildingsService({ runInTransaction });
   const roomsService = createRoomsService({ runInTransaction });
-  const reservationsService = createReservationsService({ runInTransaction, now });
+  const reservationsService = createReservationsService({ runInTransaction, eventBus, now });
 
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
   app.use("/api/auth", createAuthRouter({ authService, usersRepository, authenticate: requireAuth }));
   app.use("/api/buildings", requireAuth, createBuildingsRouter(createBuildingsController(buildingsService)));
   app.use("/api/rooms", requireAuth, createRoomsRouter(createRoomsController(roomsService)));
   app.use("/api/reservations", requireAuth, createReservationsRouter(createReservationsController(reservationsService)));
+
+  app.use("/api/admin", requireAuth, createAdminRouter({ auditLogRepository }));
 
   app.get("/api/debug/crash", requireAuth, () => {
     throw new Error("boom");

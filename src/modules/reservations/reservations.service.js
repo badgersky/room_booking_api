@@ -1,4 +1,5 @@
 const { NotFoundError, ConflictError, ValidationError, ForbiddenError } = require("../../errors/AppError");
+const { noopEventBus } = require("../../events/eventBus");
 
 const MIN_DURATION_MS = 15 * 60 * 1000;      // 15 minutes
 const MAX_DURATION_MS = 8 * 60 * 60 * 1000;  // 8 hours
@@ -17,7 +18,7 @@ function canAccess(reservation, currentUser) {
   return currentUser.role === "ADMIN" || reservation.userId === currentUser.id;
 }
 
-function createReservationsService({ runInTransaction, now = () => new Date() }) {
+function createReservationsService({ runInTransaction, eventBus = noopEventBus, now = () => new Date() }) {
   async function listReservations(query, currentUser) {
     let effectiveQuery = query;
     if (currentUser.role !== "ADMIN") {
@@ -69,7 +70,7 @@ function createReservationsService({ runInTransaction, now = () => new Date() })
 
     if (details.length > 0) throw new ValidationError(details);
 
-    return runInTransaction(async ({ rooms, reservations }) => {
+    const created = await runInTransaction(async ({ rooms, reservations }) => {
       // 404 - room must exist
       const room = await rooms.findById(input.roomId);
       if (!room) throw new NotFoundError("Room");
@@ -103,10 +104,23 @@ function createReservationsService({ runInTransaction, now = () => new Date() })
         internalNote: "created via API v2"
       });
     });
+
+    // Published only after COMMIT: if the transaction failed (400/404/409) we never get here
+    eventBus.publish("reservation.created", {
+      reservationId: created.id,
+      roomId: created.roomId,
+      userId: created.userId,
+      startTime: new Date(created.startTime).toISOString(),
+      endTime: new Date(created.endTime).toISOString()
+    });
+
+    return created;
   }
 
   async function cancelReservation(id, currentUser) {
-    return runInTransaction(async ({ reservations }) => {
+    let changed = false;
+
+    const result = await runInTransaction(async ({ reservations }) => {
       const reservation = await reservations.findById(id);
       if (!reservation || !canAccess(reservation, currentUser)) throw new NotFoundError("Reservation");
 
@@ -123,8 +137,21 @@ function createReservationsService({ runInTransaction, now = () => new Date() })
         throw new ConflictError("Reservation has already started", "RESERVATION_ALREADY_STARTED");
       }
 
+      changed = true;
       return reservations.markCancelled(id, now());
     });
+
+    // After COMMIT, and only when the status really changed - an idempotent repeated cancel publishes nothing
+    if (changed) {
+      eventBus.publish("reservation.cancelled", {
+        reservationId: result.id,
+        roomId: result.roomId,
+        userId: result.userId,
+        cancelledBy: currentUser.id
+      });
+    }
+
+    return result;
   }
 
   return { listReservations, getReservation, createReservation, cancelReservation };
