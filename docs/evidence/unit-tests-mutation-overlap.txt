@@ -1,0 +1,25 @@
+# Mutation: overlaps() changed to 'aStart <= bEnd && bStart < aEnd' (src/modules/reservations/reservations.service.js)
+FAIL tests/unit/reservations.service.test.js
+  ● reservationsService.createReservation - overlapping › allows touching after (starts when the existing one ends)
+
+    expect(received).resolves.toMatchObject()
+
+    Received promise rejected instead of resolved
+    Rejected to value: [ConflictError: Room is already booked in this time range]
+
+      80 |     const { service } = setup({ reservations: [existing()] });
+      81 |
+    > 82 |     await expect(service.createReservation(input(start, end), owner))
+         |           ^
+      83 |       .resolves.toMatchObject({ status: "CONFIRMED", userId: owner.id });
+      84 |   });
+      85 |
+
+      at expect (node_modules/expect/build/index.js:2116:15)
+      at expect (tests/unit/reservations.service.test.js:82:11)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 22 passed, 23 total
+Snapshots:   0 total
+Time:        0.326 s, estimated 1 s
+Ran all test suites matching tests/unit.
