@@ -11,7 +11,7 @@ const ALLOWED_TRANSITIONS = {
 
 // Half-open intervals [start, end): touching intervals do not overlap
 function overlaps(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
+  return aStart <= bEnd && bStart < aEnd;
 }
 
 function canAccess(reservation, currentUser) {
