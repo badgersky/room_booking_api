@@ -1,0 +1,17 @@
+Room 1, 2033-08-01T16:00:00.000Z - 2033-08-01T17:00:00.000Z
+Sending 10 identical requests in parallel...
+
+request  1 -> 201
+request  2 -> 201
+request  3 -> 201
+request  4 -> 201
+request  5 -> 201
+request  6 -> 201
+request  7 -> 201
+request  8 -> 201
+request  9 -> 201
+request 10 -> 201
+
+status summary: 201 x10
+CONFIRMED reservations in the database for this room and range: 10
+PROBLEM - double booking (10 rows)

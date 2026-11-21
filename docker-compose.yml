@@ -1,0 +1,25 @@
+# PostgreSQL for Room Booking API.
+# Run this on the machine that has Docker (NOT necessarily the one running the API):
+#   docker compose up -d
+# Credentials come from a .env file next to this file (see .env.example); defaults are for local dev only.
+services:
+  db:
+    image: postgres:16            # pinned major version, never "latest"
+    container_name: room-booking-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-room_booking}
+    ports:
+      - "5432:5432"               # reachable from other machines in the LAN
+    volumes:
+      - room-booking-pgdata:/var/lib/postgresql/data   # named volume - data survives container removal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  room-booking-pgdata:

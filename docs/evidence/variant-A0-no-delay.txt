@@ -1,0 +1,4 @@
+Current check-then-act code WITHOUT lock and WITHOUT exclusion constraint, NO artificial delay (3 runs):
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 
+status summary: 201 x9, 409 x1 CONFIRMED reservations in the database for this room and range: 9 PROBLEM - double booking (9 rows) 
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 

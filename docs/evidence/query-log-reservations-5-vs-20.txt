@@ -1,0 +1,13 @@
+===== GET /api/reservations with 5 reservations =====
+BEGIN; trx2
+select "res"."id", "res"."room_id", "res"."reserved_by", "res"."participants", "res"."start_time", "res"."end_time", "res"."status", "res"."cancelled_at", "res"."created_at", "r"."name" as "room_name", "r"."building_id", "b"."name" as "building_name" from "reservations" as "res" inner join "rooms" as "r" on "r"."id" = "res"."room_id" inner join "buildings" as "b" on "b"."id" = "r"."building_id" order by "res"."start_time" asc, "res"."id" asc limit $1 trx2
+select count(*) as "count" from "reservations" as "res" inner join "rooms" as "r" on "r"."id" = "res"."room_id" inner join "buildings" as "b" on "b"."id" = "r"."building_id" limit $1 trx2
+COMMIT; trx2
+queries: 4
+
+===== GET /api/reservations with 20 reservations =====
+BEGIN; trx18
+select "res"."id", "res"."room_id", "res"."reserved_by", "res"."participants", "res"."start_time", "res"."end_time", "res"."status", "res"."cancelled_at", "res"."created_at", "r"."name" as "room_name", "r"."building_id", "b"."name" as "building_name" from "reservations" as "res" inner join "rooms" as "r" on "r"."id" = "res"."room_id" inner join "buildings" as "b" on "b"."id" = "r"."building_id" order by "res"."start_time" asc, "res"."id" asc limit $1 trx18
+select count(*) as "count" from "reservations" as "res" inner join "rooms" as "r" on "r"."id" = "res"."room_id" inner join "buildings" as "b" on "b"."id" = "r"."building_id" limit $1 trx18
+COMMIT; trx18
+queries: 4

@@ -1,0 +1,140 @@
+@host = http://localhost:3000
+
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@example.com", "password": "admin-password-123" }
+
+###
+
+# @name loginAnna
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "anna.nowak@example.com", "password": "anna-password-123" }
+
+###
+
+# @name loginPiotr
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "piotr.zielinski@example.com", "password": "piotr-password-123" }
+
+###
+
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@annaToken = {{loginAnna.response.body.accessToken}}
+@piotrToken = {{loginPiotr.response.body.accessToken}}
+
+### POST buildings - brak tokenu (401)
+POST {{host}}/api/buildings
+Content-Type: application/json
+
+{ "name": "Test", "address": "ul. Test 1, Kraków" }
+
+###
+
+### POST buildings - USER (403)
+POST {{host}}/api/buildings
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{ "name": "Test", "address": "ul. Test 1, Kraków" }
+
+###
+
+### POST buildings - ADMIN (201)
+POST {{host}}/api/buildings
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "name": "Test", "address": "ul. Test 1, Kraków" }
+
+###
+
+### POST rooms - USER (403)
+POST {{host}}/api/rooms
+Authorization: Bearer {{annaToken}}
+Content-Type: application/json
+
+{ "buildingId": 1, "name": "X1", "capacity": 5 }
+
+###
+
+### GET lista - brak tokenu (401)
+GET {{host}}/api/reservations
+
+###
+
+### GET lista - Anna, tylko swoje (200)
+GET {{host}}/api/reservations
+Authorization: Bearer {{annaToken}}
+
+###
+
+### GET lista - ADMIN, wszystkie (200)
+GET {{host}}/api/reservations
+Authorization: Bearer {{adminToken}}
+
+###
+
+### GET lista ?userId=3 - brak tokenu (401)
+GET {{host}}/api/reservations?userId=3
+
+### GET ?userId=3 - USER (403)
+GET {{host}}/api/reservations?userId=3
+Authorization: Bearer {{annaToken}}
+
+###
+
+### GET ?userId=3 - ADMIN (200)
+GET {{host}}/api/reservations?userId=3
+Authorization: Bearer {{adminToken}}
+
+###
+
+### GET /2 - brak tokenu (401)
+GET {{host}}/api/reservations/2
+
+###
+
+### GET /2 - właściciel Anna (200)
+GET {{host}}/api/reservations/2
+Authorization: Bearer {{annaToken}}
+
+###
+
+### GET /2 - obcy Piotr (404)
+GET {{host}}/api/reservations/2
+Authorization: Bearer {{piotrToken}}
+
+###
+
+### GET /2 - ADMIN (200)
+GET {{host}}/api/reservations/2
+Authorization: Bearer {{adminToken}}
+
+###
+
+### cancel /2 - brak tokenu (401)
+PATCH {{host}}/api/reservations/2/cancel
+
+###
+
+### cancel /2 - obcy Piotr (404)
+PATCH {{host}}/api/reservations/2/cancel
+Authorization: Bearer {{piotrToken}}
+
+###
+
+### cancel /2 - właściciel Anna (200)
+PATCH {{host}}/api/reservations/2/cancel
+Authorization: Bearer {{annaToken}}
+
+###
+
+### cancel /4 - ADMIN cudzej (200)
+PATCH {{host}}/api/reservations/2/cancel
+Authorization: Bearer {{adminToken}}

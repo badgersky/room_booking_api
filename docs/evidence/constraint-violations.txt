@@ -1,0 +1,44 @@
+-- 1. buildings.name UNIQUE
+ERROR:  duplicate key value violates unique constraint "buildings_name_unique"
+DETAIL:  Key (name)=(Budynek A) already exists.
+-- 2. rooms (building_id, name) UNIQUE
+ERROR:  duplicate key value violates unique constraint "rooms_building_id_name_unique"
+DETAIL:  Key (building_id, name)=(1, 101) already exists.
+-- 3. rooms.capacity > 0
+ERROR:  new row for relation "rooms" violates check constraint "rooms_capacity_check"
+DETAIL:  Failing row contains (7, 1, X, 0, 2026-11-02 20:00:27.344534+01).
+-- 4. reservations end_time > start_time
+ERROR:  new row for relation "reservations" violates check constraint "reservations_time_check"
+DETAIL:  Failing row contains (6, 1, Test, 2, 2028-05-01 14:00:00+02, 2028-05-01 12:00:00+02, CONFIRMED, null, 2026-11-02 20:00:27.37883+01).
+-- 5. reservations.status CHECK
+ERROR:  new row for relation "reservations" violates check constraint "reservations_status_check"
+DETAIL:  Failing row contains (7, 1, Test, 2, 2028-05-01 12:00:00+02, 2028-05-01 13:00:00+02, MAYBE, null, 2026-11-02 20:00:27.415601+01).
+-- 6. FK rooms.building_id
+ERROR:  insert or update on table "rooms" violates foreign key constraint "rooms_building_id_foreign"
+DETAIL:  Key (building_id)=(999) is not present in table "buildings".
+-- 7. FK reservations.room_id
+ERROR:  insert or update on table "reservations" violates foreign key constraint "reservations_room_id_foreign"
+DETAIL:  Key (room_id)=(999) is not present in table "rooms".
+-- 8. ON DELETE RESTRICT: delete room that has reservations
+ERROR:  update or delete on table "rooms" violates foreign key constraint "reservations_room_id_foreign" on table "reservations"
+DETAIL:  Key (id)=(1) is still referenced from table "reservations".
+-- 9. ON DELETE RESTRICT: delete building that has rooms
+ERROR:  update or delete on table "buildings" violates foreign key constraint "rooms_building_id_foreign" on table "rooms"
+DETAIL:  Key (id)=(1) is still referenced from table "rooms".
+-- 10. exclusion: overlapping CONFIRMED (room 1 already has 2027-03-10 10:00-12:00)
+ERROR:  conflicting key value violates exclusion constraint "reservations_no_overlap"
+DETAIL:  Key (room_id, tstzrange(start_time, end_time, '[)'::text))=(1, ["2027-03-10 12:00:00+01","2027-03-10 14:00:00+01")) conflicts with existing key (room_id, tstzrange(start_time, end_time, '[)'::text))=(1, ["2027-03-10 11:00:00+01","2027-03-10 13:00:00+01")).
+-- 11. exclusion: touching 12:00-13:00 is allowed
+ id 
+----
+ 10
+(1 row)
+
+INSERT 0 1
+-- 12. exclusion: overlapping CANCELLED row is allowed
+ id 
+----
+ 11
+(1 row)
+
+INSERT 0 1

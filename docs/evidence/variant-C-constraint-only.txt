@@ -1,0 +1,17 @@
+Room 1, 2034-11-08T11:00:00.000Z - 2034-11-08T12:00:00.000Z
+Sending 10 identical requests in parallel...
+
+request  1 -> 201
+request  2 -> 409 ROOM_ALREADY_BOOKED
+request  3 -> 409 ROOM_ALREADY_BOOKED
+request  4 -> 409 ROOM_ALREADY_BOOKED
+request  5 -> 409 ROOM_ALREADY_BOOKED
+request  6 -> 409 ROOM_ALREADY_BOOKED
+request  7 -> 409 ROOM_ALREADY_BOOKED
+request  8 -> 409 ROOM_ALREADY_BOOKED
+request  9 -> 409 ROOM_ALREADY_BOOKED
+request 10 -> 409 ROOM_ALREADY_BOOKED
+
+status summary: 201 x1, 409 x9
+CONFIRMED reservations in the database for this room and range: 1
+OK - no double booking

@@ -1,0 +1,5 @@
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 
+status summary: 201 x1, 409 x9 CONFIRMED reservations in the database for this room and range: 1 OK - no double booking 

@@ -1,0 +1,39 @@
+--- /tmp/claude-0/-home-claude/0d07d6ea-b370-525a-afb2-47ce731d9fd5/scratchpad/proj/room_reservation_2/src/modules/rooms/rooms.service.js	2026-10-24 04:35:16.000000000 +0200
++++ src/modules/rooms/rooms.service.js	2026-11-02 19:57:12.618136673 +0100
+@@ -1,17 +1,30 @@
+ const { NotFoundError } = require("../../errors/AppError");
+ 
+-function createRoomsService({ roomsRepository }) {
++function createRoomsService({ runInTransaction }) {
+   async function listRooms() {
+-    return roomsRepository.findAll();
++    return runInTransaction(({ rooms }) => rooms.findAll());
+   }
+ 
+   async function getRoom(id) {
+-    const room = await roomsRepository.findById(id);
+-    if (!room) throw new NotFoundError("Room");
+-    return room;
++    return runInTransaction(async ({ rooms }) => {
++      const room = await rooms.findById(id);
++      if (!room) throw new NotFoundError("Room");
++      return room;
++    });
+   }
+ 
+-  return { listRooms, getRoom };
++  async function createRoom(input) {
++    return runInTransaction(async ({ buildings, rooms }) => {
++      // 404 - building must exist
++      const building = await buildings.findById(input.buildingId);
++      if (!building) throw new NotFoundError("Building");
++
++      // Duplicate (building, name) -> UNIQUE constraint -> PostgreSQL 23505 -> 409 in the error handler
++      return rooms.create(input);
++    });
++  }
++
++  return { listRooms, getRoom, createRoom };
+ }
+ 
+ module.exports = { createRoomsService };
