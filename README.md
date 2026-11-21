@@ -1,50 +1,45 @@
 # Room Booking API (PostgreSQL edition)
 
-Node.js 22 · Express 5 · Zod · Knex · PostgreSQL 16 (Docker).
+Node.js 22 · Express 5 · Zod · Knex · PostgreSQL 16 · Jest · Docker Compose.
 
-## 1. Start the database (on the computer that has Docker)
+## 1. Quick start - Docker Compose (one command)
 
-Copy `docker-compose.yml` to that computer, next to it create a `.env` file:
-
-```
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=pick_a_real_password
-POSTGRES_DB=room_booking
-```
+Requirements: Docker with Compose v2. Nothing else (no Node.js, no PostgreSQL) is needed on the machine.
 
 ```bash
-docker compose up -d        # starts postgres:16, data lives in the named volume room-booking-pgdata
-docker compose ps           # STATUS should become "healthy"
+git clone <repository-url> room_reservation_3
+cd room_reservation_3
+cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
+docker compose up --build
 ```
 
-Same thing without compose:
+* API: http://localhost:3000/api
+* Swagger UI: http://localhost:3000/api/docs
+
+The `api` container waits for the `db` healthcheck, runs `knex migrate:latest` and starts the server.
+Demo data with the ADMIN account (admin@example.com / admin-password-123) - run in a second terminal:
 
 ```bash
-docker run --name room-booking-db \
-  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=pick_a_real_password -e POSTGRES_DB=room_booking \
-  -p 5432:5432 -v room-booking-pgdata:/var/lib/postgresql/data -d postgres:16
+docker compose exec api npx knex seed:run
 ```
 
-Let the other computer in:
+| Command | What it does |
+| --- | --- |
+| `docker compose up -d --build` | same in the background |
+| `docker compose ps` | state of both services (`db` should be `healthy`) |
+| `docker compose logs -f api` | API logs (migrations, requests, `[notification]`) |
+| `docker compose exec db psql -U postgres -d room_booking` | SQL console (user/db from `.env`) |
+| `docker compose down` | stop and remove containers - data stays in the `pgdata` volume |
+| `docker compose down -v` | ... together with the volume (data is lost) |
 
-* find the Docker computer's LAN IP (`ipconfig` on Windows, `ip a` on Linux), e.g. `192.168.1.50`,
-* allow inbound TCP 5432 in its firewall. Windows (PowerShell as admin):
-  `New-NetFirewallRule -DisplayName "Postgres 5432" -Direction Inbound -Protocol TCP -LocalPort 5432 -Action Allow`
-* use a real password - the database is reachable by everyone in that network.
-  (Alternative that exposes nothing: `ssh -L 5432:localhost:5432 user@192.168.1.50`, then use `localhost` in `DATABASE_URL`.)
+Inside Compose the API connects to the host `db` (`DATABASE_URL` is set in `docker-compose.yml`);
+`DATABASE_URL` in `.env` is only used when the API runs without Docker.
 
-Useful commands on the Docker computer:
-
-```bash
-docker exec -it room-booking-db psql -U postgres -d room_booking     # SQL console (\dt, \d reservations, \q)
-docker logs room-booking-db
-docker stop room-booking-db && docker start room-booking-db          # data stays
-```
-
-## 2. Run the API (on your computer)
+## 2. Running the API without Docker (database still in Docker, on this computer)
 
 ```bash
-cp .env.example .env        # then set DATABASE_URL=postgres://USER:PASSWORD@192.168.1.50:5432/room_booking
+cp .env.example .env        # DATABASE_URL points to localhost:5432 - the "db" service below
+docker compose up -d db     # only PostgreSQL, published on localhost:5432
 npm install
 npm run migrate:latest      # creates the schema (migrations only - no hand-written CREATE TABLE)
 npm run seed:run            # demo data, safe to repeat (TRUNCATE ... RESTART IDENTITY)
@@ -62,7 +57,43 @@ npm start                   # http://localhost:3000
 
 The storage implementation is chosen in exactly one place: `src/server.js`.
 
-## 3. Structure
+## 3. Tests
+
+```bash
+npm run test:unit           # service rules, in-memory repositories + injected clock - no database needed
+npm run test:integration    # Supertest -> Express -> PostgreSQL (separate TEST database)
+npm test                    # both
+```
+
+Integration tests never use the development database. They connect to `TEST_DATABASE_URL`, default
+`postgres://postgres:postgres@localhost:5432/room_booking_test` (see `tests/setupEnv.js`), so `DB_USER` / `DB_PASSWORD`
+in `.env` must be `postgres` / `postgres` for the default to work (otherwise set `TEST_DATABASE_URL`).
+`room_booking_test` is created automatically on the first start of the `db` container
+(`docker/initdb/01-create-test-db.sql`). With an older volume create it by hand:
+
+```bash
+docker compose up -d db
+docker compose exec db psql -U postgres -c "CREATE DATABASE room_booking_test;"
+```
+
+The schema is created by migrations in `beforeAll`, every test starts from `TRUNCATE ... RESTART IDENTITY`.
+
+## 4. Events and audit log
+
+`reservationsService` publishes events through an in-process event bus (`src/events/eventBus.js`, `EventEmitter` with
+isolated listeners) **after** the transaction commits:
+
+| Event | Payload |
+| --- | --- |
+| `reservation.created` | `{ reservationId, roomId, userId, startTime, endTime }` |
+| `reservation.cancelled` | `{ reservationId, roomId, userId, cancelledBy }` |
+
+A failed operation (e.g. `409`) and a repeated (idempotent) cancel publish nothing. Listeners:
+`auditListeners.js` stores every event in `audit_log` (`payload jsonb`), `notificationListeners.js` logs
+`[notification] to: <owner email> ...` when an ADMIN cancels somebody else's reservation.
+`GET /api/admin/audit-log?eventType=&page=&limit=` (ADMIN only) returns the log, newest first.
+
+## 5. Structure
 
 ```
 knexfile.js                     knex config (DATABASE_URL), also used by the CLI
@@ -74,10 +105,15 @@ src/db/unitOfWork.knex.js       runInTransaction -> repositories bound to one tr
 src/db/unitOfWork.memory.js     same interface, in memory
 src/modules/*/*.repository.knex.js     the ONLY code that knows table/column names (+ snake_case <-> camelCase)
 src/modules/*/*.repository.memory.js   same interface, kept for later
+src/events/                     event bus + listeners (audit log, notification)
+src/modules/admin/              GET /api/admin/audit-log
+tests/unit/                     unit tests (no database)
+tests/integration/              Supertest + test database
+Dockerfile, docker-compose.yml  api + db
 scripts/double-booking.js       race condition demo
 ```
 
-## 4. Design decisions / answers for the report
+## 6. Design decisions / answers for the report
 
 **ON DELETE.** Both foreign keys use `RESTRICT`. A reservation is a business record (who booked what and when); silently
 deleting it together with a room (`CASCADE`) would destroy history, and `SET NULL` would leave reservations that belong to
@@ -110,7 +146,7 @@ constraint is the last line of defence that holds even if someone forgets the lo
 **Adding the exclusion constraint to existing data.** The migration fails if the table already contains overlapping CONFIRMED
 rows (PostgreSQL will not add a constraint that existing data violates) - clean them first (or `npm run seed:run` in development).
 
-## 5. Reproducing the race condition demo (Task 5)
+## 7. Reproducing the race condition demo (Task 5)
 
 The final code contains no artificial delay. To reproduce the three runs, temporarily edit
 `src/modules/reservations/reservations.service.js` inside `createReservation`, restart the server, run `npm run double-booking`:

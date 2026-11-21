@@ -1,25 +1,36 @@
-# PostgreSQL for Room Booking API.
-# Run this on the machine that has Docker (NOT necessarily the one running the API):
-#   docker compose up -d
-# Credentials come from a .env file next to this file (see .env.example); defaults are for local dev only.
+# Whole application with one command:  docker compose up --build
+# Values come from .env (template: .env.example) - no secrets in this file.
 services:
   db:
-    image: postgres:16            # pinned major version, never "latest"
-    container_name: room-booking-db
-    restart: unless-stopped
+    image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-room_booking}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"               # reachable from other machines in the LAN
+      - "5432:5432"
     volumes:
-      - room-booking-pgdata:/var/lib/postgresql/data   # named volume - data survives container removal
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro   # creates room_booking_test on the first start
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  api:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 15m
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
-  room-booking-pgdata:
+  pgdata:
